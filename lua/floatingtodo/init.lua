@@ -103,6 +103,7 @@ local function setup_user_commands(opts)
 	vim.api.nvim_create_user_command("Td", function()
 		open_floating_file(opts)
 	end, {})
+	vim.keymap.set("n", "<leader>td", ":Td<cr>", { silent = true, desc = "Open To Do List" })
 end
 
 M.setup = function(opts)
