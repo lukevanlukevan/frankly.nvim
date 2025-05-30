@@ -3,6 +3,7 @@ local M = {}
 local win = nil
 
 local default_opts = {
+	target_dir = "~/todo",
 	target_file = "~/notes/todo.md",
 	border = "single",
 	width = 0.8,
@@ -59,6 +60,23 @@ local function win_config(opts)
 	}
 end
 
+local function checkdir(opts)
+	print(vim.inspect(opts))
+	if vim.fn.isdirectory(opts.target_dir) == 0 then
+		print("no folder")
+		os.execute("mkdir " .. opts.target_dir)
+	end
+	return true
+end
+
+local function create_dated_file(path)
+	local date_str = os.date("%Y-%m-%d")
+	vim.cmd("e " .. date_str .. ".md")
+end
+local function show_daily(opts)
+	checkdir(opts)
+	create_dated_file(opts)
+end
 local function open_floating_file(opts)
 	if win ~= nil and vim.api.nvim_win_is_valid(win) then
 		vim.api.nvim_set_current_win(win)
@@ -109,5 +127,8 @@ end
 M.setup = function(opts)
 	setup_user_commands(opts)
 end
+opts = { target_dir = "~/todo" }
+
+show_daily(opts)
 
 return M
