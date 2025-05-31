@@ -115,6 +115,11 @@ local function open_floating_file(opts)
 
 	win = vim.api.nvim_open_win(buf, true, win_config(opts))
 
+	vim.cmd("set nonumber")
+	vim.cmd("set norelativenumber")
+	vim.cmd("set statuscolumn=")
+	vim.cmd("set signcolumn=no")
+
 	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
 		noremap = true,
 		silent = true,
