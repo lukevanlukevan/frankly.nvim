@@ -202,7 +202,7 @@ local function init_buf_keymaps()
 		silent = true,
 		callback = function()
 			if vim.api.nvim_get_option_value("modified", { buf = buf }) then
-				vim.notify("save your changes pls", vim.log.levels.WARN)
+				vim.notify("Unsaved changes!", vim.log.levels.WARN)
 			else
 				vim.api.nvim_win_close(0, true)
 				state.win = nil
@@ -214,14 +214,14 @@ local function init_buf_keymaps()
 		noremap = true,
 		silent = true,
 		callback = function()
-			M.walk_files(-1)
+			M.walk_files(1)
 		end,
 	})
 	vim.api.nvim_buf_set_keymap(buf, "n", "<M-p>", "", {
 		noremap = true,
 		silent = true,
 		callback = function()
-			M.walk_files(1)
+			M.walk_files(-1)
 		end,
 	})
 end
@@ -234,7 +234,6 @@ M.walk_files = function(dir)
 	state.file_index = math.min(#cwdContent, state.file_index)
 	state.file_index = math.max(1, state.file_index)
 	local new_path = cwdContent[state.file_index]
-	print(new_path)
 
 	local buf = vim.fn.bufnr(new_path, true)
 
