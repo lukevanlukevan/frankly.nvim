@@ -119,7 +119,10 @@ local function open_floating_file(opts)
 	vim.cmd("set norelativenumber")
 	vim.cmd("set statuscolumn=")
 	vim.cmd("set signcolumn=no")
-
+	-- TODO: add hotkeys to walk to previous notes, next notes with < and >
+	-- probably need to filter if we have notes.
+	-- also have a hotkey to jump back to today.
+	-- set today with something like window.setbuf bla bla not sure
 	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
 		noremap = true,
 		silent = true,
