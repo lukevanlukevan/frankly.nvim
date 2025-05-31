@@ -3,7 +3,11 @@ local tsq = vim.treesitter.query
 
 local M = {}
 
-local win = nil
+local state = {
+	win = nil,
+	buf = nil,
+	file_index = 1,
+}
 
 local default_opts = {
 	target_dir = "~/todo",
@@ -51,6 +55,8 @@ local function win_config(opts)
 		col = col,
 		row = row,
 		border = opts.border,
+		title = { { " Frankly - [meta-n]ext [meta-p]revious [q]uit ", "Normal" } },
+		title_pos = "center",
 	}
 end
 
@@ -78,31 +84,157 @@ local function get_previous_todo(opts)
 	end
 end
 
-local function write_filtered_todos(src_path, dest_path)
-	local lines = vim.fn.readfile(src_path)
-	local filtered = {}
+-- Tree-sitter section parsing and writing
 
-	for _, line in ipairs(lines) do
-		if not line:match("%- %[x%]") then
-			table.insert(filtered, line)
+local function extract_heading_info(node, bufnr)
+	local level = 0
+	local text = nil
+
+	for child in node:iter_children() do
+		local type = child:type()
+		if type:match("^atx_h%d+_marker$") then
+			level = #vim.treesitter.get_node_text(child, bufnr)
+		elseif type == "inline" then
+			text = vim.treesitter.get_node_text(child, bufnr)
 		end
 	end
 
-	vim.fn.writefile(filtered, dest_path)
+	return level, text or "Untitled"
 end
 
-local function open_floating_file(opts)
-	if win ~= nil and vim.api.nvim_win_is_valid(win) then
-		vim.api.nvim_set_current_win(win)
-		return
+local function get_heading_path(node, bufnr)
+	local current = node
+	local headings = {}
+
+	while current do
+		local sibling = current:prev_named_sibling()
+		while sibling do
+			if sibling:type() == "atx_heading" then
+				local level, text = extract_heading_info(sibling, bufnr)
+				while #headings > 0 and headings[#headings].level >= level do
+					table.remove(headings)
+				end
+				table.insert(headings, { level = level, text = text })
+			end
+			sibling = sibling:prev_named_sibling()
+		end
+		current = current:parent()
 	end
 
-	local new_path = create_dated_file(opts)
-	if vim.fn.filereadable(new_path) == 0 then
-		local last_todo = expand_path(get_previous_todo(opts))
-		write_filtered_todos(last_todo, new_path)
+	table.sort(headings, function(a, b)
+		return a.level < b.level
+	end)
+
+	local path = {}
+	for _, h in ipairs(headings) do
+		table.insert(path, h.text)
 	end
-	-- vim.cmd("e " .. new_path)
+	return path
+end
+
+local function insert_nested(tbl, path, value)
+	for i = 1, #path - 1 do
+		local key = path[i]
+		tbl[key] = tbl[key] or {}
+		tbl = tbl[key]
+	end
+
+	local last = path[#path]
+	tbl[last] = tbl[last] or {}
+	table.insert(tbl[last], value)
+end
+
+local function get_unchecked_tasks_by_heading(bufnr)
+	local root = ts.get_parser(bufnr, "markdown"):parse()[1]:root()
+	local query_string = [[
+		(list_item
+			(task_list_marker_unchecked) @unchecked)
+	]]
+	local q = tsq.parse("markdown", query_string)
+	local results = {}
+
+	for id, node in q:iter_captures(root, bufnr, 0, -1) do
+		if q.captures[id] == "unchecked" then
+			local list_item_node = node:parent()
+			local text = vim.treesitter.get_node_text(list_item_node, bufnr)
+			local path = get_heading_path(list_item_node, bufnr)
+			if #path == 0 then
+				path = { "No Heading" }
+			end
+			insert_nested(results, path, text)
+		end
+	end
+
+	return results
+end
+
+local function flatten_tasks_by_heading(tree, indent)
+	indent = indent or ""
+	local lines = {}
+
+	for k, v in pairs(tree) do
+		if type(v) == "table" then
+			table.insert(lines, indent .. "# " .. k)
+			table.insert(lines, "")
+			vim.list_extend(lines, flatten_tasks_by_heading(v, indent .. ""))
+		else
+			table.insert(lines, indent .. v)
+			table.insert(lines, "")
+		end
+	end
+
+	return lines
+end
+
+local function write_filtered_todos(src_path, dest_path)
+	local buf = vim.fn.bufadd(src_path)
+	vim.fn.bufload(buf)
+
+	local task_tree = get_unchecked_tasks_by_heading(buf)
+	local lines = flatten_tasks_by_heading(task_tree)
+	vim.fn.writefile(lines, dest_path)
+end
+
+local function init_buf_keymaps()
+	local buf = state.buf
+	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
+		noremap = true,
+		silent = true,
+		callback = function()
+			if vim.api.nvim_get_option_value("modified", { buf = buf }) then
+				vim.notify("save your changes pls", vim.log.levels.WARN)
+			else
+				vim.api.nvim_win_close(0, true)
+				state.win = nil
+				state.buf = nil
+			end
+		end,
+	})
+	vim.api.nvim_buf_set_keymap(buf, "n", "<M-n>", "", {
+		noremap = true,
+		silent = true,
+		callback = function()
+			M.walk_files(-1)
+		end,
+	})
+	vim.api.nvim_buf_set_keymap(buf, "n", "<M-p>", "", {
+		noremap = true,
+		silent = true,
+		callback = function()
+			M.walk_files(1)
+		end,
+	})
+end
+
+--- @param dir number
+M.walk_files = function(dir)
+	local tdir = os.getenv("HOME") .. "/todo/"
+	local cwdContent = vim.split(vim.fn.glob(tdir .. "/*"), "\n", { trimempty = true })
+	state.file_index = state.file_index + dir
+	state.file_index = math.min(#cwdContent, state.file_index)
+	state.file_index = math.max(1, state.file_index)
+	local new_path = cwdContent[state.file_index]
+	print(new_path)
 
 	local buf = vim.fn.bufnr(new_path, true)
 
@@ -113,28 +245,44 @@ local function open_floating_file(opts)
 
 	vim.bo[buf].swapfile = false
 
-	win = vim.api.nvim_open_win(buf, true, win_config(opts))
+	state.buf = buf
+
+	if state.win and vim.api.nvim_win_is_valid(state.win) then
+		vim.api.nvim_win_set_buf(state.win, buf)
+	end
+	init_buf_keymaps()
+end
+
+local function open_floating_file(opts)
+	if state.win ~= nil and vim.api.nvim_win_is_valid(state.win) then
+		vim.api.nvim_set_current_win(state.win)
+		return
+	end
+
+	local new_path = create_dated_file(opts)
+	if vim.fn.filereadable(new_path) == 0 then
+		local last_todo = expand_path(get_previous_todo(opts))
+		write_filtered_todos(last_todo, new_path)
+	end
+
+	local buf = vim.fn.bufnr(new_path, true)
+
+	if buf == -1 then
+		buf = vim.api.nvim_create_buf(false, false)
+		vim.api.nvim_buf_set_name(buf, new_path)
+	end
+
+	vim.bo[buf].swapfile = false
+
+	state.win = vim.api.nvim_open_win(buf, true, win_config(opts))
+	state.buf = buf
 
 	vim.cmd("set nonumber")
 	vim.cmd("set norelativenumber")
 	vim.cmd("set statuscolumn=")
 	vim.cmd("set signcolumn=no")
-	-- TODO: add hotkeys to walk to previous notes, next notes with < and >
-	-- probably need to filter if we have notes.
-	-- also have a hotkey to jump back to today.
-	-- set today with something like window.setbuf bla bla not sure
-	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
-		noremap = true,
-		silent = true,
-		callback = function()
-			if vim.api.nvim_get_option_value("modified", { buf = buf }) then
-				vim.notify("save your changes pls", vim.log.levels.WARN)
-			else
-				vim.api.nvim_win_close(0, true)
-				win = nil
-			end
-		end,
-	})
+
+	init_buf_keymaps()
 end
 
 local function setup_user_commands(opts)
