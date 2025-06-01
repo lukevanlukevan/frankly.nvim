@@ -16,12 +16,12 @@ local function extract_tasks_and_headers()
 		[[
     (section
       (atx_heading
-        [(atx_h1_marker) (atx_h2_marker) (atx_h3_marker) (atx_h4_marker) (atx_h5_marker) (atx_h6_marker)] @level
+        [(atx_h1_marker) (atx_h2_marker) (atx_h3_marker)] @level
         (inline) @heading)
       (list
         (list_item
-          (task_list_marker_unchecked)
-          (paragraph (inline)))) @task)
+          (task_list_marker_unchecked) @unchecked_marker
+          (paragraph (inline) @task))))
     ]]
 	)
 
@@ -41,7 +41,8 @@ local function extract_tasks_and_headers()
 		elseif name == "heading" then
 			-- Flush previous group if needed
 			if current_heading and #current_tasks > 0 then
-				table.insert(results, string.format("H%d: %s", heading_level or 1, current_heading))
+				-- table.insert(results, string.format("H%d: %s", heading_level or 1, current_heading))
+				table.insert(results, string.rep("#", heading_level or 1) .. " " .. current_heading)
 				for _, task in ipairs(current_tasks) do
 					table.insert(results, task)
 				end
@@ -58,8 +59,7 @@ local function extract_tasks_and_headers()
 
 	-- Final flush after loop
 	if current_heading and #current_tasks > 0 then
-		table.insert(results, string.format("H%d: %s", heading_level or 1, current_heading))
-		table.insert(results, "")
+		table.insert(results, string.rep("#", heading_level or 1) .. " " .. current_heading)
 		for _, task in ipairs(current_tasks) do
 			table.insert(results, task)
 		end
