@@ -8,6 +8,7 @@ local state = {
 	win = nil,
 	buf = nil,
 	file_index = 1,
+	target_dir = "",
 }
 
 local default_opts = {
@@ -121,7 +122,7 @@ end
 
 --- @param dir number
 M.walk_files = function(dir)
-	local tdir = os.getenv("HOME") .. "/todo/"
+	local tdir = state.target_dir
 	local cwdContent = vim.split(vim.fn.glob(tdir .. "/*"), "\n", { trimempty = true })
 	state.file_index = state.file_index + dir
 	state.file_index = math.min(#cwdContent, state.file_index)
@@ -194,6 +195,7 @@ local function setup_user_commands(opts)
 end
 
 M.setup = function(opts)
+	state.target_dir = opts.target_dir
 	setup_user_commands(opts)
 end
 
