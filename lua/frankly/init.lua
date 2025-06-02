@@ -12,15 +12,17 @@ local state = {
 
 local default_opts = {
 	target_dir = "~/todo",
-	target_file = "~/notes/todo.md",
 	border = "single",
 	width = 100,
 	height = 45,
 }
 
 local function expand_path(path)
-	if path:sub(1, 1) == "~" then
-		return os.getenv("HOME") .. path:sub(2)
+	if path then
+		if path:sub(1, 1) == "~" then
+			return os.getenv("HOME") .. path:sub(2)
+		end
+		return path
 	end
 	return path
 end
@@ -66,11 +68,11 @@ local function get_previous_todo(opts)
 		local date_str = os.date("%Y-%m-%d", timestamp)
 		local filepath = expand_path(target_dir .. "/" .. date_str .. md_ext)
 		if vim.fn.filereadable(filepath) == 1 then
-			return filepath
+			return { filepath, true }
 		end
 		days_back = days_back + 1
 		if days_back > 365 then
-			return nil
+			return { nil, false }
 		end
 	end
 end
@@ -151,10 +153,15 @@ local function open_floating_file(opts)
 
 	local new_path = get_dated_file_path(opts)
 	if vim.fn.filereadable(new_path) == 0 then
-		local last_todo = expand_path(get_previous_todo(opts))
-		local clean_todos = tdparser.parse_todos(last_todo)
 		local dest_path = get_dated_file_path(opts)
-		vim.fn.writefile(clean_todos, dest_path)
+		local raw_last, has_last = get_previous_todo(opts)
+		if has_last then
+			local last_todo = expand_path(raw_last)
+			local clean_todos = tdparser.parse_todos(last_todo)
+			vim.fn.writefile(clean_todos, dest_path)
+		else
+			vim.fn.writefile({ "# Todo", "" }, dest_path)
+		end
 	end
 
 	local buf = vim.fn.bufnr(new_path, true)
