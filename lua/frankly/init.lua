@@ -68,11 +68,11 @@ local function get_previous_todo(opts)
 		local date_str = os.date("%Y-%m-%d", timestamp)
 		local filepath = expand_path(target_dir .. "/" .. date_str .. md_ext)
 		if vim.fn.filereadable(filepath) == 1 then
-			return { filepath, true }
+			return filepath, true
 		end
 		days_back = days_back + 1
 		if days_back > 365 then
-			return { nil, false }
+			return nil, false
 		end
 	end
 end
