@@ -59,6 +59,19 @@ local function get_dated_file_path(opts)
 	return expand_path(opts.target_dir .. "/" .. date_str .. ".md")
 end
 
+local function handle_commit()
+	os.execute("cd " .. state.target_dir)
+	os.execute("git add .")
+	os.execute("git commit -m '" .. os.date("%Y-%m-%d:%H-%M") .. "'")
+	os.execute("git push")
+	-- os.execute("git pull")
+end
+
+local function handle_fetch()
+	os.execute("cd " .. state.target_dir .. " && git fetch")
+	-- os.execute("git fetch")
+end
+
 local function get_previous_todo(opts)
 	local target_dir = opts.target_dir or "."
 	local days_back = 1
@@ -118,6 +131,15 @@ local function init_buf_keymaps()
 			vim.cmd("e " .. fp)
 		end,
 	})
+
+	-- vim.api.nvim_create_autocmd("BufWritePost", {
+	-- 	buffer = state.buf,
+	-- 	callback = function()
+	-- 		vim.schedule(function()
+	-- 			handle_commit()
+	-- 		end)
+	-- 	end,
+	-- })
 end
 
 --- @param dir number
@@ -147,6 +169,7 @@ M.walk_files = function(dir)
 end
 
 local function open_floating_file(opts)
+	-- handle_fetch()
 	if state.win ~= nil and vim.api.nvim_win_is_valid(state.win) then
 		vim.api.nvim_set_current_win(state.win)
 		return
