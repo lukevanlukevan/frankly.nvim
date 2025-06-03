@@ -140,9 +140,14 @@ local function init_buf_keymaps(opts)
 	-- 		end)
 	-- 	end,
 	-- })
-	vim.api.nvim_create_autocmd("VimResized", {
+	local cmdid = vim.api.nvim_create_autocmd("VimResized", {
 		callback = function()
 			vim.api.nvim_win_set_config(state.win, win_config(opts))
+		end,
+	})
+	vim.api.nvim_create_autocmd("BufWinLeave", {
+		callback = function()
+			vim.api.nvim_del_autocmd(cmdid)
 		end,
 	})
 end
