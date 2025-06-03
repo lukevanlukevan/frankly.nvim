@@ -91,7 +91,7 @@ local function get_previous_todo(opts)
 	end
 end
 
-local function init_buf_keymaps()
+local function init_buf_keymaps(opts)
 	local buf = state.buf
 	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
 		noremap = true,
@@ -140,6 +140,11 @@ local function init_buf_keymaps()
 	-- 		end)
 	-- 	end,
 	-- })
+	vim.api.nvim_create_autocmd("VimResized", {
+		callback = function()
+			vim.api.nvim_win_set_config(state.win, win_config(opts))
+		end,
+	})
 end
 
 --- @param dir number
@@ -165,7 +170,7 @@ M.walk_files = function(dir)
 	if state.win and vim.api.nvim_win_is_valid(state.win) then
 		vim.api.nvim_win_set_buf(state.win, buf)
 	end
-	init_buf_keymaps()
+	init_buf_keymaps(opts)
 end
 
 local function open_floating_file(opts)
@@ -205,7 +210,7 @@ local function open_floating_file(opts)
 	vim.cmd("set statuscolumn=")
 	vim.cmd("set signcolumn=no")
 
-	init_buf_keymaps()
+	init_buf_keymaps(opts)
 end
 
 local function setup_user_commands(opts)
