@@ -1,12 +1,12 @@
-# floatingtodo.nvim
+# frankly.nvim
 
-a globally accessible buffer for managing tasks.
+A globally accessible pop-up buffer for managing tasks. (inspired by [vimichael](https://github.com/vimichael))
 
 ## Install
 
 ```lua
 return {
-  "vimichael/floatingtodo.nvim",
+  "lukevanlukevan/frankly.nvim",
   config = function()
     require("floatingtodo").setup({
       target_file = "~/notes/todo.md",

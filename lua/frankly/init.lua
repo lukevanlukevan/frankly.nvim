@@ -9,6 +9,7 @@ local state = {
 	buf = nil,
 	file_index = 1,
 	target_dir = "",
+	opts = {},
 }
 
 local default_opts = {
@@ -20,6 +21,7 @@ local default_opts = {
 
 local function expand_path(path)
 	if path then
+		-- if path:sub(1,1) == "$"
 		if path:sub(1, 1) == "~" then
 			return os.getenv("HOME") .. path:sub(2)
 		end
@@ -91,8 +93,15 @@ local function get_previous_todo(opts)
 	end
 end
 
-local function init_buf_keymaps(opts)
+local function init_buf_keymaps()
 	local buf = state.buf
+
+	local cmdid = vim.api.nvim_create_autocmd("VimResized", {
+		buffer = state.buf,
+		callback = function()
+			vim.api.nvim_win_set_config(state.win, win_config(state.opts))
+		end,
+	})
 	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
 		noremap = true,
 		silent = true,
@@ -110,6 +119,7 @@ local function init_buf_keymaps(opts)
 		noremap = true,
 		silent = true,
 		callback = function()
+			vim.api.nvim_clear_autocmds({ buffer = buf })
 			M.walk_files(1)
 		end,
 	})
@@ -117,6 +127,7 @@ local function init_buf_keymaps(opts)
 		noremap = true,
 		silent = true,
 		callback = function()
+			vim.api.nvim_clear_autocmds({ buffer = buf })
 			M.walk_files(-1)
 		end,
 	})
@@ -140,12 +151,8 @@ local function init_buf_keymaps(opts)
 	-- 		end)
 	-- 	end,
 	-- })
-	local cmdid = vim.api.nvim_create_autocmd("VimResized", {
-		callback = function()
-			vim.api.nvim_win_set_config(state.win, win_config(opts))
-		end,
-	})
 	vim.api.nvim_create_autocmd("BufWinLeave", {
+		buffer = state.buf,
 		callback = function()
 			vim.api.nvim_del_autocmd(cmdid)
 		end,
@@ -175,7 +182,7 @@ M.walk_files = function(dir)
 	if state.win and vim.api.nvim_win_is_valid(state.win) then
 		vim.api.nvim_win_set_buf(state.win, buf)
 	end
-	init_buf_keymaps(opts)
+	init_buf_keymaps()
 end
 
 local function open_floating_file(opts)
@@ -215,7 +222,7 @@ local function open_floating_file(opts)
 	vim.cmd("set statuscolumn=")
 	vim.cmd("set signcolumn=no")
 
-	init_buf_keymaps(opts)
+	init_buf_keymaps()
 end
 
 local function setup_user_commands(opts)
@@ -229,6 +236,7 @@ end
 
 M.setup = function(opts)
 	state.target_dir = opts.target_dir
+	state.opts = opts
 	setup_user_commands(opts)
 end
 
