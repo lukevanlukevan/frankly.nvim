@@ -9,7 +9,9 @@ local state = {
 	buf = nil,
 	file_index = 1,
 	target_dir = "",
+	cmdid = nil,
 	opts = {},
+	sticky = false,
 }
 
 local default_opts = {
@@ -38,40 +40,38 @@ local function win_config(opts)
 	local height = math.min(baseh - 5, opts.height)
 	local col = (basew - width) / 2
 	local row = math.max(((baseh - height) / 2) - 2, 1)
-	-- local width = math.min(math.floor(vim.o.columns * opts.width), 64)
-	-- local height = math.floor(vim.o.lines * opts.height)
-	-- local col = math.floor((vim.o.columns - width) * calculate_position(opts.position))
-	-- local row = math.floor((vim.o.lines - height) * select(2, calculate_position(opts.position)))
-	return {
-		relative = "editor",
-		width = width,
-		height = height,
-		col = col,
-		row = row,
-		border = opts.border,
-		title = { { " Frankly ", "Normal" } },
-		title_pos = "center",
-		footer = { { " Next [meta-n] - Previous [meta-p] - Fullscreen [f] - Quit [q] ", "Normal" } },
-		footer_pos = "center",
-	}
+	if state.sticky ~= true then
+		return {
+			relative = "editor",
+			width = width,
+			height = height,
+			col = col,
+			row = row,
+			border = opts.border,
+			title = { { " Frankly ", "Normal" } },
+			title_pos = "center",
+			footer = { { " Next [meta-n] - Previous [meta-p] - Fullscreen [f] - Quit [q] ", "Normal" } },
+			footer_pos = "center",
+		}
+	else
+		return {
+			relative = "editor",
+			width = 40,
+			height = 10,
+			col = vim.o.columns - 12,
+			row = 1,
+			border = opts.border,
+			title = { { " Frankly ", "Normal" } },
+			title_pos = "center",
+			footer = { { " Next [meta-n] - Previous [meta-p] - Fullscreen [f] - Quit [q] ", "Normal" } },
+			footer_pos = "center",
+		}
+	end
 end
 
 local function get_dated_file_path(opts)
 	local date_str = os.date("%Y-%m-%d")
 	return expand_path(opts.target_dir .. "/" .. date_str .. ".md")
-end
-
-local function handle_commit()
-	os.execute("cd " .. state.target_dir)
-	os.execute("git add .")
-	os.execute("git commit -m '" .. os.date("%Y-%m-%d:%H-%M") .. "'")
-	os.execute("git push")
-	-- os.execute("git pull")
-end
-
-local function handle_fetch()
-	os.execute("cd " .. state.target_dir .. " && git fetch")
-	-- os.execute("git fetch")
 end
 
 local function get_previous_todo(opts)
@@ -93,15 +93,16 @@ local function get_previous_todo(opts)
 	end
 end
 
-local function init_buf_keymaps()
-	local buf = state.buf
+local function refresh_window()
+	local buf = state.buf or 0
 
-	local cmdid = vim.api.nvim_create_autocmd("VimResized", {
+	state.cmdid = vim.api.nvim_create_autocmd("VimResized", {
 		buffer = state.buf,
 		callback = function()
 			vim.api.nvim_win_set_config(state.win, win_config(state.opts))
 		end,
 	})
+
 	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
 		noremap = true,
 		silent = true,
@@ -115,6 +116,18 @@ local function init_buf_keymaps()
 			end
 		end,
 	})
+
+	vim.api.nvim_buf_set_keymap(buf, "n", "m", "", {
+		noremap = true,
+		silent = true,
+		callback = function()
+			vim.api.nvim_clear_autocmds({ buffer = state.buf })
+			state.sticky = true
+			vim.api.nvim_win_set_config(state.win, win_config(state.opts))
+			refresh_window()
+		end,
+	})
+
 	vim.api.nvim_buf_set_keymap(buf, "n", "<M-n>", "", {
 		noremap = true,
 		silent = true,
@@ -136,25 +149,10 @@ local function init_buf_keymaps()
 		silent = true,
 		callback = function()
 			state.win = nil
-			state.bug = true
+			state.buf = nil
 			local fp = vim.api.nvim_buf_get_name(0)
 			vim.api.nvim_win_close(0, true)
 			vim.cmd("e " .. fp)
-		end,
-	})
-
-	-- vim.api.nvim_create_autocmd("BufWritePost", {
-	-- 	buffer = state.buf,
-	-- 	callback = function()
-	-- 		vim.schedule(function()
-	-- 			handle_commit()
-	-- 		end)
-	-- 	end,
-	-- })
-	vim.api.nvim_create_autocmd("BufWinLeave", {
-		buffer = state.buf,
-		callback = function()
-			vim.api.nvim_del_autocmd(cmdid)
 		end,
 	})
 end
@@ -182,11 +180,10 @@ M.walk_files = function(dir)
 	if state.win and vim.api.nvim_win_is_valid(state.win) then
 		vim.api.nvim_win_set_buf(state.win, buf)
 	end
-	init_buf_keymaps()
+	refresh_window()
 end
 
 local function open_floating_file(opts)
-	-- handle_fetch()
 	if state.win ~= nil and vim.api.nvim_win_is_valid(state.win) then
 		vim.api.nvim_set_current_win(state.win)
 		return
@@ -222,7 +219,7 @@ local function open_floating_file(opts)
 	vim.cmd("set statuscolumn=")
 	vim.cmd("set signcolumn=no")
 
-	init_buf_keymaps()
+	refresh_window()
 end
 
 local function setup_user_commands(opts)
@@ -235,8 +232,8 @@ local function setup_user_commands(opts)
 end
 
 M.setup = function(opts)
+	state.opts = vim.tbl_deep_extend("force", default_opts, opts or {})
 	state.target_dir = opts.target_dir
-	state.opts = opts
 	setup_user_commands(opts)
 end
 
