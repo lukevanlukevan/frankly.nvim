@@ -2,6 +2,8 @@
 
 A globally accessible pop-up buffer for managing tasks. (inspired by [vimichael](https://github.com/vimichael))
 
+![frank-preview](frankly-preview.gif)
+
 ## Install
 
 ```lua
