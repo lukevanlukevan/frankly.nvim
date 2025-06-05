@@ -23,7 +23,9 @@ local default_opts = {
 
 local function expand_path(path)
 	if path then
-		-- if path:sub(1,1) == "$"
+		if path:sub(1, 1) == "$" then
+			return os.getenv(path:sub(2))
+		end
 		if path:sub(1, 1) == "~" then
 			return os.getenv("HOME") .. path:sub(2)
 		end
@@ -36,37 +38,22 @@ local function win_config(opts)
 	local basew = vim.o.columns
 	local baseh = vim.o.lines
 
-	local width = math.min(basew, opts.width)
-	local height = math.min(baseh - 5, opts.height)
-	local col = (basew - width) / 2
-	local row = math.max(((baseh - height) / 2) - 2, 1)
-	if state.sticky ~= true then
-		return {
-			relative = "editor",
-			width = width,
-			height = height,
-			col = col,
-			row = row,
-			border = opts.border,
-			title = { { " Frankly ", "Normal" } },
-			title_pos = "center",
-			footer = { { " Next [meta-n] - Previous [meta-p] - Fullscreen [f] - Quit [q] ", "Normal" } },
-			footer_pos = "center",
-		}
-	else
-		return {
-			relative = "editor",
-			width = 40,
-			height = 10,
-			col = vim.o.columns - 12,
-			row = 1,
-			border = opts.border,
-			title = { { " Frankly ", "Normal" } },
-			title_pos = "center",
-			footer = { { " Next [meta-n] - Previous [meta-p] - Fullscreen [f] - Quit [q] ", "Normal" } },
-			footer_pos = "center",
-		}
-	end
+	local width = state.sticky and 40 or math.min(basew, opts.width)
+	local height = state.sticky and 10 or math.min(baseh - 5, opts.height)
+	local col = state.sticky and vim.o.columns - width - 2 or (basew - width) / 2
+	local row = state.sticky and 1 or math.max(((baseh - height) / 2) - 2, 1)
+	return {
+		relative = "editor",
+		width = width,
+		height = height,
+		col = col,
+		row = row,
+		border = opts.border,
+		title = { { " Frankly ", "Normal" } },
+		title_pos = "center",
+		footer = { { " Next [meta-n] - Previous [meta-p] - Fullscreen [f] - Quit [q] ", "Normal" } },
+		footer_pos = "center",
+	}
 end
 
 local function get_dated_file_path(opts)

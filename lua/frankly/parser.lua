@@ -15,11 +15,6 @@ end
 
 function M.parse_todos(file)
 	local usefile = file or ""
-	-- local bufnr = 10
-	-- local lang = parsers.get_buf_lang(bufnr)
-	-- local parser = parsers.get_parser(bufnr, lang)
-	-- local tree = parser:parse()[1]
-	-- local root = tree:root()
 
 	local content = read_file(file)
 	if not content then
@@ -32,7 +27,6 @@ function M.parse_todos(file)
 	local tree = parser:parse()[1]
 	local root = tree:root()
 
-	-- Load a query from file or use inline
 	local q = query.parse(
 		lang,
 		[[
@@ -100,16 +94,6 @@ function M.parse_todos(file)
 	end
 
 	return results
-
-	-- Create a new buffer and write results
-	-- local new_buf = vim.api.nvim_create_buf(false, true)
-	-- vim.api.nvim_buf_set_lines(new_buf, 0, -1, false, results)
-	-- vim.api.nvim_set_current_buf(new_buf)
 end
 
 return M
-
--- parse_todos("/Users/lukevan/todo/2025-05-30.md")
-
--- Run it with
--- :lua extract_tasks_and_headers()
