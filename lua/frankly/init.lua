@@ -111,6 +111,7 @@ local function refresh_window()
 				vim.notify("Unsaved changes!", vim.log.levels.WARN)
 			else
 				vim.api.nvim_win_close(0, true)
+				state.sticky = false
 				state.win = nil
 				state.buf = nil
 			end
@@ -148,6 +149,7 @@ local function refresh_window()
 		noremap = true,
 		silent = true,
 		callback = function()
+			state.sticky = false
 			state.win = nil
 			state.buf = nil
 			local fp = vim.api.nvim_buf_get_name(0)
