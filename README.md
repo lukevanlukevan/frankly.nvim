@@ -2,7 +2,7 @@
 
 A globally accessible pop-up buffer for managing tasks. (inspired by [vimichael](https://github.com/vimichael))
 
-![frank-preview](/Franly_overview.webp)
+![frank-preview](/Frankly_overview.webp)
 
 ## Install
 
