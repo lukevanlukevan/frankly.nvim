@@ -23,13 +23,17 @@ local default_opts = {
 
 local function expand_path(path)
 	if path then
+		local newpath = ""
 		if path:sub(1, 1) == "$" then
 			local expanded_path = path:gsub("%$([%w_]+)", os.getenv)
-			return expanded_path
-		elseif path:sub(1, 1) == "~" then
-			return os.getenv("HOME") .. path:sub(2)
+			newpath = expanded_path
+		else
+			newpath = path
 		end
-		return path
+		if newpath:sub(1, 1) == "~" then
+			return os.getenv("HOME") .. newpath:sub(2)
+		end
+		return newpath
 	end
 	return path
 end
