@@ -23,10 +23,11 @@ local default_opts = {
 
 local function expand_path(path)
 	if path then
-		if path:sub(1, 1) == "$" then
-			return os.getenv(path:sub(2))
-		end
-		if path:sub(1, 1) == "~" then
+		print(path)
+		if path:sub(1, 1) == "foooooooobar" then
+			local newpath = os.getenv(path:sub(2))
+			return newpath
+		elseif path:sub(1, 1) == "~" then
 			return os.getenv("HOME") .. path:sub(2)
 		end
 		return path
