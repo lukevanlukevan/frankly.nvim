@@ -125,7 +125,7 @@ local function refresh_window()
 		silent = true,
 		callback = function()
 			vim.api.nvim_clear_autocmds({ buffer = buf })
-			M.walk_files(1)
+			M.walk_files(-1)
 		end,
 	})
 	vim.api.nvim_buf_set_keymap(buf, "n", "<M-p>", "", {
@@ -133,7 +133,7 @@ local function refresh_window()
 		silent = true,
 		callback = function()
 			vim.api.nvim_clear_autocmds({ buffer = buf })
-			M.walk_files(-1)
+			M.walk_files(1)
 		end,
 	})
 	vim.api.nvim_buf_set_keymap(buf, "n", "f", "", {
@@ -154,11 +154,14 @@ end
 M.walk_files = function(dir)
 	local tdir = state.target_dir
 	local cwdContent = vim.split(vim.fn.glob(tdir .. "/*"), "\n", { trimempty = true })
+	table.sort(cwdContent, function(a, b)
+		return a > b
+	end)
 	state.file_index = state.file_index + dir
 	state.file_index = math.min(#cwdContent, state.file_index)
 	state.file_index = math.max(1, state.file_index)
 	local new_path = cwdContent[state.file_index]
-
+	print(new_path)
 	local buf = vim.fn.bufnr(new_path, true)
 
 	if buf == -1 then
